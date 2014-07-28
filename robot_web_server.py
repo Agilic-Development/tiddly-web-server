@@ -54,7 +54,6 @@ import camera_streamer
 import robot_controller
 import robot_config
 import json
-import ino_uploader
 import subprocess
 
 robot = None
@@ -75,67 +74,51 @@ def createRobot(robotConfig, resultQueue):
 
 
 #--------------------------------------------------------------------------------------------------- 
-class ConnectionHandler( sockjs.tornado.SockJSConnection ):
+class ConnectionHandler(sockjs.tornado.SockJSConnection):
     
     #-----------------------------------------------------------------------------------------------
-    def on_open( self, info ):
-        
+    def on_open(self, info):
         pass
         
     #-----------------------------------------------------------------------------------------------
     def on_message( self, message ):
                 
         try:
-            message = str( message )
+            message = str(message)
         except Exception:
-            logging.warning( "Got a message that couldn't be converted to a string" )
+            logging.warning("Got a message that couldn't be converted to a string")
             return
 
-        if isinstance( message, str ):
+        if isinstance(message, str):
             
-            lineData = message.split( " " )
-            if len( lineData ) > 0:
+            line_data = message.split(" ")
+            if len(line_data) > 0:
                 
-                if lineData[0] == "":
-                
+                if line_data[0] == "":
                     if robot is not None:
                         robot.centreNeck()
-                
-                elif lineData[0] == "StartStreaming":
-                    
-                    cameraStreamer.startStreaming()
-                    
-                elif lineData[0] == "Shutdown":
-                    
-                    result = subprocess.call(["poweroff"])
-                    logging.info( "Shutdown request made. Result of call to poweroff was " + str(result) )
-                        
-                elif lineData[0] == "SetMovementServos" and len(lineData) >= 3:
-                    
-                    leftMotorSpeed = 0.0
-                    rightMotorSpeed = 0.0
-                    
-                    try:
-                        leftMotorSpeed = float(lineData[1])
-                    except Exception:
-                        pass
-                    
-                    try:
-                        rightMotorSpeed = float(lineData[2])
-                    except Exception:
-                        pass
-                    
-                    if robot is not None:
-                        robot.setMotorSpeeds(leftMotorSpeed, rightMotorSpeed)
-                    
-                elif lineData[0] == "CameraAngle" and len(lineData) >= 3:
-                    
-                    neckJoystickX, neckJoystickY = self.extract_joystick_data(lineData[1], lineData[2])
-                        
-                    if robot is not None:
-                        robot.setNeckJoystickPos(neckJoystickX, neckJoystickY)
 
-                elif lineData[ 0 ] == "Code":
+                elif line_data[0] == "StartStreaming":
+                    cameraStreamer.startStreaming()
+
+                elif line_data[0] == "Shutdown":
+                    subprocess.call(["poweroff"])
+
+                elif line_data[0] == "SetMovementServos" and len(line_data) >= 3:
+
+                    left_motor_speed, right_motor_speed = self.extract_joystick_data(line_data[1], line_data[2])
+
+                    if robot is not None:
+                        robot.setMotorSpeeds(left_motor_speed, right_motor_speed)
+
+                elif line_data[0] == "CameraAngle" and len(line_data) >= 3:
+
+                    neck_joystick_x, neck_joystick_y = self.extract_joystick_data(line_data[1], line_data[2])
+
+                    if robot is not None:
+                        robot.set_camera_angle(neck_joystick_x, neck_joystick_y)
+
+                elif line_data[0] == "Code":
                     print "code received"
                     code = "\n".join(message.split('\n')[1:-1])
                     print code
@@ -153,7 +136,7 @@ class ConnectionHandler( sockjs.tornado.SockJSConnection ):
 
     #-----------------------------------------------------------------------------------------------
     def on_close( self ):
-        logging.info( "SockJS connection closed" )
+        logging.info("SockJS connection closed")
 
     #-----------------------------------------------------------------------------------------------
     def getLogsDict( self ):
@@ -211,7 +194,7 @@ def robotUpdate():
         tornado.ioloop.IOLoop.instance().stop()
         return
         
-    if robot == None:
+    if robot is None:
         
         if not robotConnectionResultQueue.empty():
             
