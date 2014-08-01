@@ -31,12 +31,12 @@
 import logging
 
 LOG_FILENAME = "/tmp/robot_web_server_log.txt"
-logging.basicConfig( filename=LOG_FILENAME, level=logging.DEBUG )
+logging.basicConfig( filename=LOG_FILENAME, level=logging.DEBUG)
 
 # Also log to stdout
 consoleHandler = logging.StreamHandler()
 consoleHandler.setLevel( logging.DEBUG )
-logging.getLogger( "" ).addHandler( consoleHandler )
+logging.getLogger("").addHandler(consoleHandler)
 
 import os
 import os.path
@@ -60,8 +60,8 @@ robot = None
 robotConfig = robot_config.RobotConfig()
 
 cameraStreamer = None
-scriptPath = os.path.dirname( __file__ )
-webPath = os.path.abspath( scriptPath + "/www" )
+scriptPath = os.path.dirname(__file__)
+webPath = os.path.abspath(scriptPath + "/www")
 robotConnectionResultQueue = Queue.Queue()
 isClosing = False
 
@@ -81,7 +81,7 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
         pass
         
     #-----------------------------------------------------------------------------------------------
-    def on_message( self, message ):
+    def on_message(self, message):
                 
         try:
             message = str(message)
@@ -135,29 +135,29 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
             exec(code)
 
     #-----------------------------------------------------------------------------------------------
-    def on_close( self ):
+    def on_close(self):
         logging.info("SockJS connection closed")
 
     #-----------------------------------------------------------------------------------------------
-    def getLogsDict( self ):
+    def getLogsDict(self):
         
-        logsDict = {}
+        logs_dict = {}
         
         # Read in main logs file
         try:
-            with open( LOG_FILENAME, "r" ) as logFile:
-                logsDict[ "MainLog" ] = logFile.read()
+            with open(LOG_FILENAME, "r") as logFile:
+                logs_dict["MainLog"] = logFile.read()
         except Exception:
             pass
         
         # Read in Ino build output if it exists
         try:
-            with open( ino_uploader.BUILD_OUTPUT_FILENAME, "r" ) as logFile:
-                logsDict[ "InoBuildLog" ] = logFile.read()
+            with open(ino_uploader.BUILD_OUTPUT_FILENAME, "r") as logFile:
+                logs_dict["InoBuildLog"] = logFile.read()
         except Exception:
             pass
 
-        return logsDict
+        return logs_dict
         
     #-----------------------------------------------------------------------------------------------
     def extract_joystick_data(self, data_x, data_y ):
@@ -178,11 +178,11 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
         return joystick_x, joystick_y
 
 #--------------------------------------------------------------------------------------------------- 
-class MainHandler( tornado.web.RequestHandler ):
+class MainHandler(tornado.web.RequestHandler):
     
     #------------------------------------------------------------------------------------------------
-    def get( self ):
-        self.render( webPath + "/index.html" )
+    def get(self):
+        self.render(webPath + "/index.html")
         
 #--------------------------------------------------------------------------------------------------- 
 def robotUpdate():
@@ -205,9 +205,9 @@ def robotUpdate():
         robot.update()
 
 #--------------------------------------------------------------------------------------------------- 
-def signalHandler( signum, frame ):
+def signalHandler(signum, frame):
     
-    if signum in [ signal.SIGINT, signal.SIGTERM ]:
+    if signum in [signal.SIGINT, signal.SIGTERM]:
         global isClosing
         isClosing = True
         
@@ -215,19 +215,19 @@ def signalHandler( signum, frame ):
 #--------------------------------------------------------------------------------------------------- 
 if __name__ == "__main__":
     
-    signal.signal( signal.SIGINT, signalHandler )
-    signal.signal( signal.SIGTERM, signalHandler )
+    signal.signal(signal.SIGINT, signalHandler)
+    signal.signal(signal.SIGTERM, signalHandler)
     
     # Create the configuration for the web server
     router = sockjs.tornado.SockJSRouter( 
-        ConnectionHandler, '/robot_control' )
-    application = tornado.web.Application( router.urls + [ 
-        ( r"/", MainHandler ), 
-        ( r"/(.*)", tornado.web.StaticFileHandler, { "path": webPath } ),
-        ( r"/css/(.*)", tornado.web.StaticFileHandler, { "path": webPath + "/css" } ),
-        ( r"/css/images/(.*)", tornado.web.StaticFileHandler, { "path": webPath + "/css/images" } ),
-        ( r"/images/(.*)", tornado.web.StaticFileHandler, { "path": webPath + "/images" } ),
-        ( r"/js/(.*)", tornado.web.StaticFileHandler, { "path": webPath + "/js" } ) ] )
+        ConnectionHandler, '/robot_control')
+    application = tornado.web.Application(router.urls + [
+        (r"/", MainHandler),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": webPath}),
+        (r"/css/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/css"}),
+        (r"/css/images/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/css/images"}),
+        (r"/images/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/images"}),
+        (r"/js/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/js"})])
     
     #( r"/(.*)", tornado.web.StaticFileHandler, {"path": scriptPath + "/www" } ) ] \
     
@@ -235,25 +235,25 @@ if __name__ == "__main__":
     cameraStreamer = camera_streamer.CameraStreamer()
     
     # Make sure SPI module is loaded (shouldn't need to do this...)
-    subprocess.call( [ "modprobe", "spi_bcm2708" ] )
-    time.sleep( 0.5 )
+    subprocess.call(["modprobe", "spi_bcm2708"])
+    time.sleep(0.5)
     
     # Start connecting to the robot asyncronously
-    robotConnectionThread = threading.Thread( target=createRobot, 
-        args=[ robotConfig, robotConnectionResultQueue ] )
+    robotConnectionThread = threading.Thread(target=createRobot,
+        args=[robotConfig, robotConnectionResultQueue])
     robotConnectionThread.start()
 
     # Now start the web server
-    logging.info( "Starting web server..." )
-    http_server = tornado.httpserver.HTTPServer( application )
-    http_server.listen( 80 )
+    logging.info("Starting web server...")
+    http_server = tornado.httpserver.HTTPServer(application)
+    http_server.listen(80)
     
     robotPeriodicCallback = tornado.ioloop.PeriodicCallback( 
-        robotUpdate, 100, io_loop=tornado.ioloop.IOLoop.instance() )
+        robotUpdate, 100, io_loop=tornado.ioloop.IOLoop.instance())
     robotPeriodicCallback.start()
     
     cameraStreamerPeriodicCallback = tornado.ioloop.PeriodicCallback( 
-        cameraStreamer.update, 1000, io_loop=tornado.ioloop.IOLoop.instance() )
+        cameraStreamer.update, 1000, io_loop=tornado.ioloop.IOLoop.instance())
     cameraStreamerPeriodicCallback.start()
     
     tornado.ioloop.IOLoop.instance().start()
