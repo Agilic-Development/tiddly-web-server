@@ -31,11 +31,11 @@
 import logging
 
 LOG_FILENAME = "/tmp/robot_web_server_log.txt"
-logging.basicConfig( filename=LOG_FILENAME, level=logging.DEBUG)
+logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
 # Also log to stdout
 consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel( logging.DEBUG )
+consoleHandler.setLevel(logging.DEBUG)
 logging.getLogger("").addHandler(consoleHandler)
 
 import os
@@ -118,21 +118,27 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
                     if robot is not None:
                         robot.set_camera_angle(neck_joystick_x, neck_joystick_y)
 
+                elif line_data[0] == "SetLed" and len(line_data) >= 4:
+                    led_one, led_two, led_three = self.extract_led_data(line_data[1], line_data[2], line_data[3])
+
+                    if robot is not None:
+                        robot.set_led(led_one, led_two, led_three)
+
                 elif line_data[0] == "Code":
                     print "code received"
                     code = "\n".join(message.split('\n')[1:-1])
                     print code
-            import tiddly_bot_api
-            import RPi.GPIO as GPIO
-            from RPIO import PWM
-            left_motor = 17
-            right_motor = 27
-            line_sensor = 23
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(line_sensor, GPIO.IN)
-            servo = PWM.Servo()
-            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-            exec(code)
+                    import tiddly_bot_api
+                    import RPi.GPIO as GPIO
+                    from RPIO import PWM
+                    left_motor = 17
+                    right_motor = 27
+                    line_sensor = 23
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setup(line_sensor, GPIO.IN)
+                    servo = PWM.Servo()
+                    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+                    exec code
 
     #-----------------------------------------------------------------------------------------------
     def on_close(self):
@@ -176,6 +182,26 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
             pass
             
         return joystick_x, joystick_y
+
+    def extract_led_data(self, one, two, three):
+        led_one, led_two, led_three= 0
+        try:
+            led_one = float(data_x)
+        except Exception:
+            pass
+
+        try:
+            led_two = float(data_y)
+        except Exception:
+            pass
+
+        try:
+            led_three = float(data_y)
+        except Exception:
+            pass
+
+        return led_one, led_two, led_three
+
 
 #--------------------------------------------------------------------------------------------------- 
 class MainHandler(tornado.web.RequestHandler):
