@@ -124,21 +124,14 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
                     if robot is not None:
                         robot.set_led(led_one, led_two, led_three)
 
+                elif line_data[0] == "LineFollower" and len(line_data) > 0:
+
+                    if robot is not None:
+                        robot.line_follower(True)
+
                 elif line_data[0] == "Code":
-                    print "code received"
-                    code = "\n".join(message.split('\n')[1:-1])
-                    print code
-                    import tiddly_bot_api
-                    import RPi.GPIO as GPIO
-                    from RPIO import PWM
-                    left_motor = 17
-                    right_motor = 27
-                    line_sensor = 23
-                    GPIO.setmode(GPIO.BCM)
-                    GPIO.setup(line_sensor, GPIO.IN)
-                    servo = PWM.Servo()
-                    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-                    exec code
+                    pass
+                    ## Code from blockly to Blockly Decoder class
 
     #-----------------------------------------------------------------------------------------------
     def on_close(self):
