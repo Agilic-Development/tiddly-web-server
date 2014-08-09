@@ -1,32 +1,4 @@
-#! /usr/bin/env python
-
-# Copyright (c) 2014, Dawn Robotics Ltd
-# All rights reserved.
-
-# Redistribution and use in source and binary forms, with or without 
-# modification, are permitted provided that the following conditions are met:
-
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-
-# 2. Redistributions in binary form must reproduce the above copyright notice, 
-# this list of conditions and the following disclaimer in the documentation 
-# and/or other materials provided with the distribution.
-
-# 3. Neither the name of the Dawn Robotics Ltd nor the names of its contributors 
-# may be used to endorse or promote products derived from this software without 
-# specific prior written permission.
-
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+__author__ = 'alexgray'
 
 import logging
 
@@ -56,7 +28,7 @@ import robot_config
 import json
 import subprocess
 
-robot = None
+robot = TiddlyAPI.TiddlyBot  # Put your robot API class here
 robotConfig = robot_config.RobotConfig()
 
 cameraStreamer = None
@@ -66,23 +38,23 @@ robotConnectionResultQueue = Queue.Queue()
 isClosing = False
 
 
-#--------------------------------------------------------------------------------------------------- 
+#---------------------------------------------------------------------------------------------------
 def createRobot(robotConfig, resultQueue):
-    
+
     r = robot_controller.RobotController(robotConfig)
     resultQueue.put(r)
 
 
-#--------------------------------------------------------------------------------------------------- 
+#---------------------------------------------------------------------------------------------------
 class ConnectionHandler(sockjs.tornado.SockJSConnection):
-    
+
     #-----------------------------------------------------------------------------------------------
     def on_open(self, info):
         pass
-        
+
     #-----------------------------------------------------------------------------------------------
     def on_message(self, message):
-                
+
         try:
             message = str(message)
         except Exception:
@@ -90,44 +62,43 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
             return
 
         if isinstance(message, str):
-            
+
             line_data = message.split(" ")
             if len(line_data) > 0:
-                
+
                 if line_data[0] == "":
                     if robot is not None:
                         robot.centreNeck()
 
-                elif line_data[0] == "StartStreaming":
+                elif line_data[0] == "StartStreaming":  # "StartStreaming"
                     cameraStreamer.startStreaming()
 
-                elif line_data[0] == "Shutdown":
+                elif line_data[0] == "Shutdown":  # "Shutdown"
                     subprocess.call(["poweroff"])
 
-                elif line_data[0] == "SetMovementServos" and len(line_data) >= 3:
+                elif line_data[0] == "LineFollower":  # "LineFollower"
+                    if robot is not None:
+                        robot.line_follower(True)
+
+                elif line_data[0] == "SetMovementServos" and len(line_data) >= 3:  # "SetMovementServos 0.25 0.5"
 
                     left_motor_speed, right_motor_speed = self.extract_joystick_data(line_data[1], line_data[2])
 
                     if robot is not None:
                         robot.setMotorSpeeds(left_motor_speed, right_motor_speed)
 
-                elif line_data[0] == "CameraAngle" and len(line_data) >= 3:
+                elif line_data[0] == "CameraAngle" and len(line_data) >= 3:  # "CameraAngle -0.21"
 
                     neck_joystick_x, neck_joystick_y = self.extract_joystick_data(line_data[1], line_data[2])
 
                     if robot is not None:
                         robot.set_camera_angle(neck_joystick_x, neck_joystick_y)
 
-                elif line_data[0] == "SetLed" and len(line_data) >= 4:
+                elif line_data[0] == "SetLed" and len(line_data) >= 4:  # "SetLed 0 0 1"
                     led_one, led_two, led_three = self.extract_led_data(line_data[1], line_data[2], line_data[3])
 
                     if robot is not None:
                         robot.set_led(led_one, led_two, led_three)
-
-                elif line_data[0] == "LineFollower" and len(line_data) > 0:
-
-                    if robot is not None:
-                        robot.line_follower(True)
 
                 elif line_data[0] == "Code":
                     pass
@@ -139,16 +110,16 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
 
     #-----------------------------------------------------------------------------------------------
     def getLogsDict(self):
-        
+
         logs_dict = {}
-        
+
         # Read in main logs file
         try:
             with open(LOG_FILENAME, "r") as logFile:
                 logs_dict["MainLog"] = logFile.read()
         except Exception:
             pass
-        
+
         # Read in Ino build output if it exists
         try:
             with open(ino_uploader.BUILD_OUTPUT_FILENAME, "r") as logFile:
@@ -157,27 +128,27 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
             pass
 
         return logs_dict
-        
+
     #-----------------------------------------------------------------------------------------------
     def extract_joystick_data(self, data_x, data_y ):
-        
+
         joystick_x = 0.0
         joystick_y = 0.0
-        
+
         try:
             joystick_x = float(data_x)
         except Exception:
             pass
-        
+
         try:
             joystick_y = float(data_y)
         except Exception:
             pass
-            
+
         return joystick_x, joystick_y
 
     def extract_led_data(self, one, two, three):
-        led_one, led_two, led_three= 0
+        led_one, led_two, led_three = 0
         try:
             led_one = float(data_x)
         except Exception:
@@ -196,49 +167,49 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
         return led_one, led_two, led_three
 
 
-#--------------------------------------------------------------------------------------------------- 
+#---------------------------------------------------------------------------------------------------
 class MainHandler(tornado.web.RequestHandler):
-    
+
     #------------------------------------------------------------------------------------------------
     def get(self):
         self.render(webPath + "/index.html")
-        
-#--------------------------------------------------------------------------------------------------- 
+
+#---------------------------------------------------------------------------------------------------
 def robotUpdate():
-    
+
     global robot
     global isClosing
-    
+
     if isClosing:
         tornado.ioloop.IOLoop.instance().stop()
         return
-        
+
     if robot is None:
-        
+
         if not robotConnectionResultQueue.empty():
-            
+
             robot = robotConnectionResultQueue.get()
-        
+
     else:
-                
+
         robot.update()
 
-#--------------------------------------------------------------------------------------------------- 
+#---------------------------------------------------------------------------------------------------
 def signalHandler(signum, frame):
-    
+
     if signum in [signal.SIGINT, signal.SIGTERM]:
         global isClosing
         isClosing = True
-        
-        
-#--------------------------------------------------------------------------------------------------- 
+
+
+#---------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    
+
     signal.signal(signal.SIGINT, signalHandler)
     signal.signal(signal.SIGTERM, signalHandler)
-    
+
     # Create the configuration for the web server
-    router = sockjs.tornado.SockJSRouter( 
+    router = sockjs.tornado.SockJSRouter(
         ConnectionHandler, '/robot_control')
     application = tornado.web.Application(router.urls + [
         (r"/", MainHandler),
@@ -247,16 +218,16 @@ if __name__ == "__main__":
         (r"/css/images/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/css/images"}),
         (r"/images/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/images"}),
         (r"/js/(.*)", tornado.web.StaticFileHandler, {"path": webPath + "/js"})])
-    
+
     #( r"/(.*)", tornado.web.StaticFileHandler, {"path": scriptPath + "/www" } ) ] \
-    
+
     # Create a camera streamer
     cameraStreamer = camera_streamer.CameraStreamer()
-    
+
     # Make sure SPI module is loaded (shouldn't need to do this...)
     subprocess.call(["modprobe", "spi_bcm2708"])
     time.sleep(0.5)
-    
+
     # Start connecting to the robot asyncronously
     robotConnectionThread = threading.Thread(target=createRobot,
         args=[robotConfig, robotConnectionResultQueue])
@@ -266,25 +237,25 @@ if __name__ == "__main__":
     logging.info("Starting web server...")
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(80)
-    
-    robotPeriodicCallback = tornado.ioloop.PeriodicCallback( 
+
+    robotPeriodicCallback = tornado.ioloop.PeriodicCallback(
         robotUpdate, 100, io_loop=tornado.ioloop.IOLoop.instance())
     robotPeriodicCallback.start()
-    
-    cameraStreamerPeriodicCallback = tornado.ioloop.PeriodicCallback( 
+
+    cameraStreamerPeriodicCallback = tornado.ioloop.PeriodicCallback(
         cameraStreamer.update, 1000, io_loop=tornado.ioloop.IOLoop.instance())
     cameraStreamerPeriodicCallback.start()
-    
+
     tornado.ioloop.IOLoop.instance().start()
-    
+
     # Shut down code
     robotConnectionThread.join()
-    
+
     if robot is not None:
         robot.disconnect()
     else:
         if not robotConnectionResultQueue.empty():
             robot = robotConnectionResultQueue.get()
             robot.disconnect()
-            
+
     cameraStreamer.stopStreaming()
