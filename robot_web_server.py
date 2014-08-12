@@ -1,15 +1,5 @@
 __author__ = 'alexgray'
 
-import logging
-
-LOG_FILENAME = "/tmp/robot_web_server_log.txt"
-logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
-
-# Also log to stdout
-consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel(logging.DEBUG)
-logging.getLogger("").addHandler(consoleHandler)
-
 import os
 import os.path
 import math
@@ -23,12 +13,12 @@ import sockjs.tornado
 import threading
 import Queue
 import camera_streamer
-import robot_controller
 import robot_config
 import json
 import subprocess
+import TiddlyAPI
 
-robot = TiddlyAPI.TiddlyBot  # Put your robot API class here
+robot = TiddlyAPI.TiddlyBot() # Put your robot API class here
 robotConfig = robot_config.RobotConfig()
 
 cameraStreamer = None
@@ -41,7 +31,7 @@ isClosing = False
 #---------------------------------------------------------------------------------------------------
 def createRobot(robotConfig, resultQueue):
 
-    r = robot_controller.RobotController(robotConfig)
+    r = 4
     resultQueue.put(r)
 
 
@@ -50,7 +40,7 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
 
     #-----------------------------------------------------------------------------------------------
     def on_open(self, info):
-        pass
+        print (str(info))
 
     #-----------------------------------------------------------------------------------------------
     def on_message(self, message):
@@ -58,7 +48,6 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
         try:
             message = str(message)
         except Exception:
-            logging.warning("Got a message that couldn't be converted to a string")
             return
 
         if isinstance(message, str):
@@ -103,31 +92,11 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
                 elif line_data[0] == "Code":
                     pass
                     ## Code from blockly to Blockly Decoder class
-
-    #-----------------------------------------------------------------------------------------------
-    def on_close(self):
-        logging.info("SockJS connection closed")
-
-    #-----------------------------------------------------------------------------------------------
-    def getLogsDict(self):
-
-        logs_dict = {}
-
-        # Read in main logs file
-        try:
-            with open(LOG_FILENAME, "r") as logFile:
-                logs_dict["MainLog"] = logFile.read()
-        except Exception:
-            pass
-
-        # Read in Ino build output if it exists
-        try:
-            with open(ino_uploader.BUILD_OUTPUT_FILENAME, "r") as logFile:
-                logs_dict["InoBuildLog"] = logFile.read()
-        except Exception:
-            pass
-
-        return logs_dict
+                
+                elif line_data[0] == "test":
+                    print("test worked")
+                else:
+                    print("nothing out")
 
     #-----------------------------------------------------------------------------------------------
     def extract_joystick_data(self, data_x, data_y ):
@@ -150,17 +119,17 @@ class ConnectionHandler(sockjs.tornado.SockJSConnection):
     def extract_led_data(self, one, two, three):
         led_one, led_two, led_three = 0
         try:
-            led_one = float(data_x)
+            led_one = float(one)
         except Exception:
             pass
 
         try:
-            led_two = float(data_y)
+            led_two = float(two)
         except Exception:
             pass
 
         try:
-            led_three = float(data_y)
+            led_three = float(three)
         except Exception:
             pass
 
@@ -204,7 +173,7 @@ def signalHandler(signum, frame):
 
 #---------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-
+    print("starting...")
     signal.signal(signal.SIGINT, signalHandler)
     signal.signal(signal.SIGTERM, signalHandler)
 
@@ -224,28 +193,22 @@ if __name__ == "__main__":
     # Create a camera streamer
     cameraStreamer = camera_streamer.CameraStreamer()
 
-    # Make sure SPI module is loaded (shouldn't need to do this...)
-    subprocess.call(["modprobe", "spi_bcm2708"])
-    time.sleep(0.5)
-
     # Start connecting to the robot asyncronously
     robotConnectionThread = threading.Thread(target=createRobot,
         args=[robotConfig, robotConnectionResultQueue])
     robotConnectionThread.start()
 
     # Now start the web server
-    logging.info("Starting web server...")
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(80)
 
     robotPeriodicCallback = tornado.ioloop.PeriodicCallback(
         robotUpdate, 100, io_loop=tornado.ioloop.IOLoop.instance())
     robotPeriodicCallback.start()
-
     cameraStreamerPeriodicCallback = tornado.ioloop.PeriodicCallback(
         cameraStreamer.update, 1000, io_loop=tornado.ioloop.IOLoop.instance())
     cameraStreamerPeriodicCallback.start()
-
+    print("Ready!")
     tornado.ioloop.IOLoop.instance().start()
 
     # Shut down code
